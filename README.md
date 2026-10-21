@@ -16,6 +16,11 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+Before starting, copy `.env.example` to `.env` and set the Supabase URL and
+publishable key. Apply the SQL files in `supabase/migrations` to the same
+Supabase project. The profile migration creates profiles for new and existing
+auth users, which is required before creating events.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
