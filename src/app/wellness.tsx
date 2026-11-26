@@ -8,6 +8,22 @@ import { ThemedText } from '@/components/themed-text';
 import { supabase } from '@/lib/supabase';
 
 type Message = { role: 'user' | 'assistant'; content: string };
+const coachTimeoutMs = 20_000;
+
+async function withTimeout<T>(promise: Promise<T>, milliseconds: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('The assistant request timed out.')), milliseconds);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 const sources = [
   ['WHO · Tobacco and nicotine', 'https://www.who.int/news-room/fact-sheets/detail/tobacco'],
   ['WHO · Alcohol', 'https://www.who.int/news-room/fact-sheets/detail/alcohol'],
@@ -50,21 +66,23 @@ export default function WellnessScreen() {
     setMessages((old) => [...old, { role: 'user', content: text }]);
     setDraft(''); setSending(true); setError('');
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('wellness-coach', {
-        body: { message: text, history: previous },
-      });
+      const { data, error: invokeError } = await withTimeout(
+        supabase.functions.invoke('wellness-coach', {
+          body: { message: text, history: previous },
+        }),
+        coachTimeoutMs,
+      );
       if (invokeError) throw invokeError;
       if (typeof data?.reply !== 'string' || !data.reply.trim()) throw new Error(t('Асистентът не върна отговор. Опитай отново.', 'The assistant returned no reply.'));
       setMessages((old) => [...old, { role: 'assistant', content: data.reply }]);
     } catch (reason) {
-      let message = t('AI функцията не е настроена. Провери дали е публикувана и дали OPENAI_API_KEY е добавен в Supabase → Edge Functions → Secrets.', 'The AI function is not configured. Check that it is deployed and OPENAI_API_KEY is set in Supabase → Edge Functions → Secrets.');
+      let message = t('AI функцията не е настроена. Провери дали е публикувана и дали GEMINI_API_KEY е добавен в Supabase → Edge Functions → Secrets.', 'The AI function is not configured. Check that it is deployed and GEMINI_API_KEY is set in Supabase → Edge Functions → Secrets.');
       if (reason instanceof FunctionsHttpError) {
         const status = Number(reason.context?.status ?? 0);
         try {
           const payload = await reason.context.json() as { error?: string };
-          if (payload.error === 'AI_NOT_CONFIGURED') message = t('Липсва OPENAI_API_KEY в Supabase → Edge Functions → Secrets.', 'OPENAI_API_KEY is missing from Supabase → Edge Functions → Secrets.');
-          else if (payload.error === 'OPENAI_KEY_INVALID') message = t('OpenAI ключът е невалиден. Провери OPENAI_API_KEY в Supabase Secrets.', 'The OpenAI key is invalid. Check OPENAI_API_KEY in Supabase Secrets.');
-          else if (payload.error === 'OPENAI_RATE_LIMIT') message = t('OpenAI отказа заявката заради лимит или изчерпан баланс.', 'OpenAI rejected the request because of a rate limit or exhausted balance.');
+          if (payload.error === 'AI_NOT_CONFIGURED') message = t('Липсва GEMINI_API_KEY в Supabase → Edge Functions → Secrets.', 'GEMINI_API_KEY is missing from Supabase → Edge Functions → Secrets.');
+          else if (payload.error === 'AI_TIMEOUT') message = t('AI отговорът се забави. Опитай отново.', 'The AI response took too long. Please try again.');
           else if (payload.error && payload.error !== 'The assistant is temporarily unavailable. Please try again later.') message = payload.error;
           else if (status === 401) message = t('Сесията е изтекла. Излез от профила и влез отново.', 'Your session expired. Sign out and sign in again.');
           else if (status === 404) message = t('Supabase не намира wellness-coach. Публикувай функцията от правилната папка на проекта.', 'Supabase cannot find wellness-coach. Deploy the function from the correct project folder.');
@@ -75,7 +93,9 @@ export default function WellnessScreen() {
       } else if (reason instanceof FunctionsFetchError) {
         message = t('Няма връзка със Supabase. Провери интернет връзката и настройките на проекта.', 'Could not connect to Supabase. Check your internet connection and project settings.');
       } else if (reason instanceof Error && reason.message) {
-        message = reason.message;
+        message = reason.message === 'The assistant request timed out.'
+          ? t('AI отговорът се забави. Опитай отново.', 'The AI response took too long. Please try again.')
+          : reason.message;
       }
       setError(message);
     } finally { setSending(false); }

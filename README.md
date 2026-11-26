@@ -29,14 +29,15 @@ The moderation migration (`20261023001000_moderation.sql`) grants moderator acce
 
 The optional wellness onboarding is shown after a new account signs in and the first time an existing account signs in after this update. People can skip it; answers are stored only after separate consent and each account can read or delete only its own answers. Apply `supabase/migrations/20261028000100_wellness_intake.sql` in the Supabase SQL Editor.
 
-In the Supabase Dashboard, open **Edge Functions → Secrets** and add `OPENAI_API_KEY` there. Then deploy the authenticated AI coach after linking the Supabase CLI to your project:
+In the Supabase Dashboard, open **Edge Functions → Secrets** and add `GEMINI_API_KEY` for the Google AI model (create it at https://aistudio.google.com/apikey). The key belongs only in Supabase, never in `.env`, `EXPO_PUBLIC_*`, app config, or the mobile app. Then deploy the authenticated AI coach after linking the Supabase CLI to your project:
 
 ```bash
 supabase link --project-ref YOUR_PROJECT_REF
+supabase secrets set GEMINI_API_KEY=YOUR_GEMINI_KEY
 supabase functions deploy wellness-coach
 ```
 
-Set the key only as a Supabase Edge Function secret. Do not add it to `.env`, `EXPO_PUBLIC_*`, app config, or the mobile app. The coach will show a setup message until the function is deployed and the secret exists. `OPENAI_MODEL` is optional; by default the function uses `gpt-4.1-mini`.
+`GEMINI_MODEL` is optional; the default is `gemini-2.5-flash-lite`.
 
 The coach provides general wellness education, not medical care. It does not diagnose or recommend tests, and it advises users with possible alcohol withdrawal to seek medical care.
 The app uses Supabase Auth. Email/password sign-in is available after configuring the project’s email settings. To enable Google and Apple, open **Authentication → Providers** in Supabase, enable both providers, and add credentials from Google Cloud and Apple Developer. In Google Cloud, set the authorized redirect URI to the Supabase callback URL shown in the Google provider settings (`https://<project-ref>.supabase.co/auth/v1/callback`), not `localhost`. In Supabase **Authentication → URL Configuration → Redirect URLs**, allow `http://localhost:8081/auth/callback` for local web, `sporthub://**` for an installed app, and `exp://**` for Expo Go's generated iPhone callback. Add your deployed web app's exact `/auth/callback` URL too.

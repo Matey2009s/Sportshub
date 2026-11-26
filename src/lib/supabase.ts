@@ -1,24 +1,29 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createClient } from "@supabase/supabase-js";
+import { Platform } from "react-native";
 
-const normalizeSupabaseUrl = (value: string) => {
-  if (!value) return '';
-
-  return value.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+const normalizeSupabaseUrl = (value: string): string => {
+  return value
+    .trim()
+    .replace(/\/rest\/v1\/?$/, "")
+    .replace(/\/+$/, "");
 };
 
 const supabaseUrl = normalizeSupabaseUrl(
-  (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim(),
+  process.env.EXPO_PUBLIC_SUPABASE_URL ?? "",
 );
 
 const supabaseKey = (
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-  ''
+  ""
 ).trim();
 
 export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseKey);
+
+if (!hasSupabaseConfig) {
+  console.error("Supabase configuration is missing. Check your .env file.");
+}
 
 export type Profile = {
   id: string;
@@ -151,9 +156,24 @@ export type Database = {
         Relationships: [];
       };
       post_likes: {
-        Row: { id: string; post_id: string; user_id: string; created_at: string };
-        Insert: { id?: string; post_id: string; user_id: string; created_at?: string };
-        Update: Partial<{ id: string; post_id: string; user_id: string; created_at: string }>;
+        Row: {
+          id: string;
+          post_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<{
+          id: string;
+          post_id: string;
+          user_id: string;
+          created_at: string;
+        }>;
         Relationships: [];
       };
       post_comments: {
@@ -176,26 +196,75 @@ export type Database = {
       };
       training_logs: {
         Row: TrainingLog;
-        Insert: Omit<TrainingLog, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Insert: Omit<TrainingLog, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
         Update: Partial<TrainingLog>;
         Relationships: [];
       };
       wellness_intakes: {
-        Row: { user_id: string; tobacco_response: 'yes' | 'no' | 'prefer_not_to_say'; smoke_products: string[]; alcohol_response: 'yes' | 'no' | 'prefer_not_to_say'; awareness: 'yes' | 'no' | 'not_sure' | null; consented_at: string; updated_at: string };
-        Insert: { user_id: string; tobacco_response: 'yes' | 'no' | 'prefer_not_to_say'; smoke_products?: string[]; alcohol_response: 'yes' | 'no' | 'prefer_not_to_say'; awareness?: 'yes' | 'no' | 'not_sure' | null; consented_at?: string; updated_at?: string };
-        Update: Partial<{ user_id: string; tobacco_response: 'yes' | 'no' | 'prefer_not_to_say'; smoke_products: string[]; alcohol_response: 'yes' | 'no' | 'prefer_not_to_say'; awareness: 'yes' | 'no' | 'not_sure' | null; consented_at: string; updated_at: string }>;
+        Row: {
+          user_id: string;
+          tobacco_response: "yes" | "no" | "prefer_not_to_say";
+          smoke_products: string[];
+          alcohol_response: "yes" | "no" | "prefer_not_to_say";
+          awareness: "yes" | "no" | "not_sure" | null;
+          consented_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          tobacco_response: "yes" | "no" | "prefer_not_to_say";
+          smoke_products?: string[];
+          alcohol_response: "yes" | "no" | "prefer_not_to_say";
+          awareness?: "yes" | "no" | "not_sure" | null;
+          consented_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          user_id: string;
+          tobacco_response: "yes" | "no" | "prefer_not_to_say";
+          smoke_products: string[];
+          alcohol_response: "yes" | "no" | "prefer_not_to_say";
+          awareness: "yes" | "no" | "not_sure" | null;
+          consented_at: string;
+          updated_at: string;
+        }>;
         Relationships: [];
-      };      user_bans: {
-        Row: { user_id: string; reason: string; banned_by: string; created_at: string };
-        Insert: { user_id: string; reason?: string; banned_by: string; created_at?: string };
-        Update: Partial<{ user_id: string; reason: string; banned_by: string; created_at: string }>;
+      };
+      user_bans: {
+        Row: {
+          user_id: string;
+          reason: string;
+          banned_by: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          reason?: string;
+          banned_by: string;
+          created_at?: string;
+        };
+        Update: Partial<{
+          user_id: string;
+          reason: string;
+          banned_by: string;
+          created_at: string;
+        }>;
         Relationships: [];
       };
     };
     Views: Record<string, never>;
     Functions: {
-      is_sporthub_moderator: { Args: Record<PropertyKey, never>; Returns: boolean };
-      is_sporthub_user_banned: { Args: Record<PropertyKey, never>; Returns: boolean };
+      is_sporthub_moderator: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      is_sporthub_user_banned: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -205,46 +274,50 @@ export type Database = {
 const webStorage = {
   getItem: async (key: string): Promise<string | null> => {
     try {
-      return typeof localStorage !== 'undefined'
+      return typeof localStorage !== "undefined"
         ? localStorage.getItem(key)
         : null;
     } catch {
       return null;
     }
   },
+
   setItem: async (key: string, value: string): Promise<void> => {
     try {
-      if (typeof localStorage !== 'undefined') {
+      if (typeof localStorage !== "undefined") {
         localStorage.setItem(key, value);
       }
     } catch {
-      // Storage may be unavailable in private or restricted browsing modes.
+      // Storage may be unavailable.
     }
   },
+
   removeItem: async (key: string): Promise<void> => {
     try {
-      if (typeof localStorage !== 'undefined') {
+      if (typeof localStorage !== "undefined") {
         localStorage.removeItem(key);
       }
     } catch {
-      // Storage may be unavailable in private or restricted browsing modes.
+      // Storage may be unavailable.
     }
   },
 };
 
-export const supabase = createClient<Database>(
-  supabaseUrl || 'https://example.supabase.co',
-  supabaseKey || 'placeholder-publishable-key',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      storage: Platform.OS === 'web' ? webStorage : AsyncStorage,
-      storageKey: 'sporthub-auth-storage',
-    },
+if (!hasSupabaseConfig) {
+  throw new Error(
+    "Supabase configuration is missing. Check your EXPO_PUBLIC_SUPABASE_URL and publishable key.",
+  );
+}
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storage: Platform.OS === "web" ? webStorage : AsyncStorage,
+    storageKey: "sporthub-auth-storage",
   },
-);
+});
 
 export async function signUpWithEmail(
   email: string,
@@ -255,7 +328,9 @@ export async function signUpWithEmail(
     email,
     password,
     options: {
-      data: { display_name: displayName },
+      data: {
+        display_name: displayName,
+      },
     },
   });
 
@@ -299,4 +374,3 @@ export const supabaseConfig = {
   url: supabaseUrl,
   hasPublishableKey: Boolean(supabaseKey),
 };
-
